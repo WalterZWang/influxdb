@@ -2,6 +2,7 @@ from influxdb import DataFrameClient, InfluxDBClient
 import pandas as pd
 import access
 import logging
+from collections import Counter
 
 logger = logging.getLogger('daq.{0}'.format(__name__))
 
@@ -314,9 +315,8 @@ class database_forecast(database):
             ``name.replace('-','_').replace('#','').replace('/','_')``.
 
         '''
-        import cleaning
         # Detect sample rate and make sure it is constant
-        likely_sample_rate, num_sample_rates = cleaning.detect_likely_sample_rate(df)
+        likely_sample_rate, num_sample_rates = detect_likely_sample_rate(df)
         if num_sample_rates > 1:
             raise ValueError('The sample rate of the forecast is not constant.  Cannot write to database.')
         # Convert time to utc and rfc3339
@@ -557,3 +557,43 @@ class database_generic(database):
         res = self.client.query(query, database=dbname)
 
         return res
+
+def detect_likely_sample_rate(df):
+    '''Detect the likely sample rate of a dataframe.
+
+    Parameters
+    ----------
+    df : DataFrame
+        DataFrame with datetime index
+
+    Returns
+    -------
+    likely_sample_rate : int
+        Most common sample rate in DataFrame in seconds.
+        None if error.
+    num_sample_rates : int
+        Number of sample rates detected.
+
+    '''
+
+    # Detect likely sampling interval
+    time_diffs = [];
+    time_prev = df.index.values[0]
+    for time in df.index.values[1:]:
+        # Keep track of time intervals
+        time_diffs.append((time-time_prev).astype('timedelta64[s]').astype(int))
+        # Update previous time
+        time_prev = time;
+    # Get likely sample rate and detect others
+    num_sample_rates = len(Counter(time_diffs).items())
+    try:
+        likely_sample_rate = Counter(time_diffs).most_common(1)[0][0];
+        logger.info('Likely sample rate of {0} is {1}.'.format(df.columns.tolist()[0], likely_sample_rate))
+        if num_sample_rates > 2:
+            logger.warning('Note that the number of detected sample rates is larger than 2.  This could imply significant missing data.  To be safe, making likely sample rate equal to 1 minute.')
+            likely_sample_rate = 60
+    except IndexError:
+        likely_sample_rate = None
+        logger.error('Error finding likely sample rate. Likely only one value in dataframe.')
+
+    return likely_sample_rate, num_sample_rates
