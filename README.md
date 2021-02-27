@@ -29,12 +29,12 @@ condo activate influxdb-env
 
 The following two files are not necessary:
 
-``access.py``: the way to encode and decode the username and password, you can use other methods to store your username and password of the databse safely
+``access.py``: the way to encode and decode the username and password, you can use other methods to store your username and password of the database safely
 
-``gridCarbon.py``: Interface to collect grid carbon emission intensity from WattTime
+``gridCarbon.py``: contains the API to collect grid carbon emission intensity from WattTime. The grid carbon emission is used as an example data to write to and read from the influxdb database. This file is independent from the influxdb interface
 
 ### Running
-Unfortunately, you cannot run ``tutorial.ipynb``, because you need username and password to interact with the influxdb interface, which we cannot share in this public repository
+Unfortunately, you cannot run ``tutorial.ipynb``, because you need the username and password to interact with the influxdb database, which we cannot share in this public repository
 
 ### Feedback
 
